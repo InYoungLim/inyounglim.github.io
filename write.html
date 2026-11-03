@@ -113,7 +113,10 @@
   async function loadLatest() {
     if (LOCAL || !TOKEN) return;
     try { var f = await ghGet("posts.js"); var code = decodeURIComponent(escape(atob(f.content.replace(/\n/g, ""))));
-      P = (new Function(code + "; return POSTS;"))().slice(); fillPick(); } catch (e) { $("msg").textContent = "최신 글 목록을 불러오지 못했습니다: " + e.message; }
+      var cur = $("pick").value === "" ? null : (P[+$("pick").value] || {}).id;   // 불러오는 동안 고른 글이 풀리지 않게 기억
+      P = (new Function(code + "; return POSTS;"))().slice(); fillPick();
+      var ci = cur ? P.findIndex(function (p) { return p.id === cur; }) : -1;
+      if (ci >= 0) { $("pick").value = String(ci); } } catch (e) { $("msg").textContent = "최신 글 목록을 불러오지 못했습니다: " + e.message; }
   }
   var today = function () { var d = new Date(); return d.getFullYear() + ". " + (d.getMonth() + 1) + ". " + d.getDate() + "."; };
   var str = function (v) { return typeof v === "string" ? v : (v && (v.ko || v.en)) || ""; };
