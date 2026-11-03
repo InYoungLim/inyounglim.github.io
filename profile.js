@@ -175,5 +175,5 @@ var SITE = {
   },
 
   // Others 글 화면의 '목록으로' 글자
-  backLabel: { ko: "← 목록", en: "← All posts", ja: "← 一覧", zhHans: "← 列表", zhHant: "← 列表" }
+  backLabel: { ko: "목록으로", en: "All posts", ja: "一覧へ", zhHans: "返回列表", zhHant: "返回列表" }
 };

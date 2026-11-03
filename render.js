@@ -59,7 +59,7 @@
     var cur = postId && P.filter(function (p) { return p.id === postId; })[0];
     if (cur) {
       title = T(cur.title);
-      h += '<p class="back"><a href="' + url(pid, null, showDraft ? "&draft=1" : "") + '">' + T(S.backLabel) + "</a></p>";
+      h += '<p class="back"><a href="' + url(pid, null, showDraft ? "&draft=1" : "") + '">' + T(S.backLabel) + "</a>" + (/^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href) ? ' <a class="write" href="write.html?edit=' + encodeURIComponent(cur.id) + '">이 글 고치기</a>' : "") + "</p>";
       h += '<article class="post"><h1 class="pt">' + T(cur.title) + '</h1><p class="pdate">' + (cur.date || "") + "</p>" + md(T(cur.body)) + "</article>";
     } else {
       var local = /^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href);
