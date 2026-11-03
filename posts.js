@@ -6,6 +6,23 @@
 // ======================================================================
 var POSTS = [
   {
+    id: "키친타월",
+    date: "2026. 11. 1.",
+    title: "키친타월",
+    draft: false,
+    body: `
+![](posts/bounty.jpg)
+
+미국에 와서 요리를 하면서 가장 자주 사용하는 물건은 키친타월이다. 나는 P&G의 Bounty를 사용하는데, 필요한 만큼 쉽게 잘라 사용할 수 있고 가격 부담도 적다. 특히 기름이 튄 조리대나 물이 넘친 바닥을 청소할 때에는 이보다 좋은 것이 없다. 물론 키친타월은 한국에도 당연히 있는 물건이지만, 이곳에서는 매일 직접 요리를 하기 때문에 그 필요를 더욱 많이 느끼게 되었다.
+
+종이 타월은 1907년 미국 필라델피아의 한 교실에서 시작되었다고 전해진다. 그해 필라델피아에 감기가 유행하자, 한 교사가 학생들이 천 수건 하나를 함께 사용하는 것을 감염의 원인으로 보고 두꺼운 종이를 잘라 학생마다 한 장씩 사용하게 하였다고 한다. 같은 무렵 Scott Paper Company의 아서 스콧(Arthur Scott)은 화장지로 가공하기에는 너무 두꺼운 종이를 보유하고 있었는데, 이 교사의 이야기를 듣고 그 종이에 절취선을 낸 두루마리 제품을 ‘Sani-Towels’라는 이름으로 판매하기 시작하였다. 그리고 P&G는 소비자들이 강도나 부드러움보다 흡수력을 중시한다는 조사 결과를 바탕으로 1965년 두 겹으로 된 종이 타월 Bounty를 출시하였다.
+
+참고: [Kimberly-Clark, Disposable paper towels story](https://www.kimberly-clark.com/en-us/-/media/kimberly/pdf/innovation/productevol_papertowel_umbracofile.pdf), [Bounty, Brand Story](https://bountytowels.com/en-us/discover/brand-story)
+
+
+`
+  },
+  {
     id: "bounty",
     date: "2026. 11. 1.",
     title: "키친타월",
@@ -18,6 +35,7 @@ var POSTS = [
 종이 타월은 1907년 미국 필라델피아의 한 교실에서 시작되었다고 전해진다. 그해 필라델피아에 감기가 유행하자, 한 교사가 학생들이 천 수건 하나를 함께 사용하는 것을 감염의 원인으로 보고 두꺼운 종이를 잘라 학생마다 한 장씩 사용하게 하였다고 한다. 같은 무렵 Scott Paper Company의 아서 스콧(Arthur Scott)은 화장지로 가공하기에는 너무 두꺼운 종이를 보유하고 있었는데, 이 교사의 이야기를 듣고 그 종이에 절취선을 낸 두루마리 제품을 ‘Sani-Towels’라는 이름으로 판매하기 시작하였다. 그리고 P&G는 소비자들이 강도나 부드러움보다 흡수력을 중시한다는 조사 결과를 바탕으로 1965년 두 겹으로 된 종이 타월 Bounty를 출시하였다.
 
 참고: [Kimberly-Clark, Disposable paper towels story](https://www.kimberly-clark.com/en-us/-/media/kimberly/pdf/innovation/productevol_papertowel_umbracofile.pdf), [Bounty, Brand Story](https://bountytowels.com/en-us/discover/brand-story)
+
 
 `
   },
@@ -37,6 +55,7 @@ var POSTS = [
 - 둘째 항목
 
 > 인용하고 싶은 문장은 이렇게 씁니다.
+
 
 `
   }
