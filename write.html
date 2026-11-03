@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>글쓰기</title>
+<link rel="stylesheet" href="style.css?v=20261102">
+<style>
+  body{display:block}
+  .wrap{display:flex;gap:28px;padding:28px 32px;align-items:flex-start}
+  .ed{flex:1;max-width:620px}
+  .pv{flex:1;max-width:620px;padding:16px 20px;background:#fafafa}
+  .ed label{display:block;font-weight:700;margin:14px 0 4px}
+  .ed input,.ed textarea,.ed select{width:100%;font:inherit;padding:7px 9px;border:1px solid #bbb;border-radius:3px;background:#fff}
+  .ed textarea{height:420px;line-height:1.7;resize:vertical}
+  .tools{margin:6px 0}
+  .tools button,.act button{font:inherit;font-size:13px;padding:4px 10px;margin:0 4px 4px 0;border:1px solid #bbb;background:#f7f7f7;border-radius:3px;cursor:pointer}
+  .act{margin-top:16px}
+  .act button.main{background:#222;color:#fff;border-color:#222}
+  .msg{margin-top:10px;color:#00356b}
+  .hint{color:#666;font-size:13px}
+  .row2{display:flex;gap:12px}.row2>div{flex:1}
+  .chk{display:flex;align-items:center;gap:6px;margin-top:14px}.chk input{width:auto}
+  .top{padding:14px 32px;border-bottom:1px solid #ddd}
+  @media (max-width:900px){.wrap{display:block}.pv{margin-top:30px}}
+</style>
+</head>
+<body>
+<div class="top"><a href="index.html?p=others">홈페이지로</a> &nbsp; <b>글쓰기</b> <span class="hint" id="mode"></span> <a href="#" id="ghout" class="hint" style="display:none;margin-left:10px">연결 해제</a></div>
+<div class="gh" id="gh" style="display:none;padding:18px 32px;background:#f5f7fa">
+  <b>GitHub 연결</b> <span class="hint">(이 브라우저에서 처음 한 번만)</span><br>
+  <input id="tok" type="password" placeholder="GitHub 토큰을 붙여 넣으세요 (github_pat_...)" style="width:420px;font:inherit;padding:6px 8px;margin:8px 8px 0 0;border:1px solid #bbb;border-radius:3px">
+  <button id="tokgo" style="font:inherit;padding:6px 12px;border:1px solid #222;background:#222;color:#fff;border-radius:3px;cursor:pointer">연결</button>
+  <div class="hint" id="tokmsg" style="margin-top:6px">토큰은 이 컴퓨터의 브라우저에만 저장되며, 홈페이지나 다른 곳으로 보내지 않습니다.</div>
+</div>
+<div class="wrap">
+  <div class="ed">
+    <label>고칠 글 (새 글이면 그대로 두세요)</label>
+    <select id="pick"></select>
+    <div class="row2">
+      <div><label>제목</label><input id="title" placeholder="예: 코세라(Coursera)"></div>
+      <div style="max-width:170px"><label>날짜</label><input id="date"></div>
+    </div>
+    <label>본문</label>
+    <div class="tools">
+      <button data-t="h">소제목</button><button data-t="b">굵게</button><button data-t="a">링크</button><button data-t="q">인용</button><button data-t="l">목록</button><button data-t="i">사진</button>
+      <input type="file" id="img" accept="image/*" style="display:none">
+    </div>
+    <textarea id="body" placeholder="여기에 그냥 쓰세요. 빈 줄 하나로 문단이 나뉩니다."></textarea>
+    <div class="chk"><input type="checkbox" id="draft"><span>임시 저장(홈페이지 목록에 아직 안 보이게)</span></div>
+    <div class="act">
+      <button class="main" id="save">저장</button>
+      <button id="del">이 글 삭제</button>
+    </div>
+    <div class="msg" id="msg"></div>
+    <p class="hint" id="savehint"></p>
+  </div>
+  <div class="pv">
+    <p class="hint">미리 보기</p>
+    <article class="post"><h1 class="pt" id="pt"></h1><p class="pdate" id="pd"></p><div id="pb"></div></article>
+  </div>
+</div>
+<script>/* 항상 최신 파일을 읽습니다 */ var V = Date.now(); ["posts.js", "md.js"].forEach(function (s) { document.write('<script src="' + s + '?v=' + V + '"><\/script>'); });</script>
+<script>
+(async function () {
+  var P = (window.POSTS || []).slice();
+  var $ = function (id) { return document.getElementById(id); };
+  var dir = null, pending = [];   // 연결된 홈페이지 폴더, 저장 대기 중인 사진
+
+  // ---- 인터넷 홈페이지에서 바로 저장하기 (GitHub) ----
+  var REPO = "InYoungLim/inyounglim.github.io", BRANCH = "main";
+  var LOCAL = /^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href);
+  var TOKEN = localStorage.getItem("ghToken") || "";
+  var API = "https://api.github.com/repos/" + REPO + "/contents/";
+  var hdr = function () { return { "Authorization": "Bearer " + TOKEN, "Accept": "application/vnd.github+json" }; };
+  var b64text = function (s) { return btoa(unescape(encodeURIComponent(s))); };
+  var b64blob = function (blob) { return new Promise(function (ok) { var r = new FileReader(); r.onload = function () { ok(String(r.result).split(",")[1]); }; r.readAsDataURL(blob); }); };
+  async function ghGet(path) {
+    var r = await fetch(API + path + "?ref=" + BRANCH + "&t=" + Date.now(), { headers: hdr(), cache: "no-store" });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error("GitHub " + r.status);
+    return r.json();
+  }
+  async function ghPut(path, b64, msg) {
+    var cur = await ghGet(path);
+    var r = await fetch(API + path, { method: "PUT", headers: hdr(), body: JSON.stringify({ message: msg, content: b64, branch: BRANCH, sha: cur ? cur.sha : undefined }) });
+    if (!r.ok) throw new Error("GitHub " + r.status + " " + (await r.text()).slice(0, 120));
+  }
+  // 사진은 긴 변 1600px JPEG로 다시 저장합니다. 이때 사진 안의 위치 정보(GPS) 등은 지워집니다.
+  async function cleanImage(file) {
+    var bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    var k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    var c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(function (ok) { c.toBlob(ok, "image/jpeg", 0.85); });
+  }
+  function setMode() {
+    if (LOCAL) { $("mode").textContent = "(내 컴퓨터의 홈페이지 폴더에 저장합니다)"; $("savehint").textContent = "처음 저장할 때 한 번 홈페이지 폴더(index.html 이 있는 폴더)를 고르면 posts.js 와 사진이 그 폴더에 바로 저장됩니다."; return; }
+    $("gh").style.display = TOKEN ? "none" : "block"; $("ghout").style.display = TOKEN ? "inline" : "none";
+    $("mode").textContent = TOKEN ? "(저장하면 인터넷 홈페이지에 바로 올라갑니다)" : "(GitHub 연결 전에는 저장할 수 없습니다)";
+    $("savehint").textContent = TOKEN ? "저장하면 1~2분 뒤 홈페이지에 반영됩니다." : "";
+  }
+  $("tokgo").onclick = async function () {
+    TOKEN = $("tok").value.trim(); if (!TOKEN) return;
+    try { var r = await fetch("https://api.github.com/repos/" + REPO, { headers: hdr() }); var j = await r.json();
+      if (!r.ok || !(j.permissions && j.permissions.push)) throw new Error(r.status);
+      localStorage.setItem("ghToken", TOKEN); $("tok").value = ""; setMode(); await loadLatest(); $("msg").textContent = "GitHub에 연결했습니다.";
+    } catch (e) { TOKEN = ""; $("tokmsg").textContent = "연결하지 못했습니다. 토큰이 맞는지, inyounglim.github.io 저장소에 대한 Contents 쓰기 권한이 있는지 확인해 주세요."; }
+  };
+  $("ghout").onclick = function (e) { e.preventDefault(); localStorage.removeItem("ghToken"); TOKEN = ""; setMode(); };
+  // 인터넷에서 열면 방금 저장한 내용까지 보이도록 GitHub의 최신 posts.js 를 읽습니다.
+  async function loadLatest() {
+    if (LOCAL || !TOKEN) return;
+    try { var f = await ghGet("posts.js"); var code = decodeURIComponent(escape(atob(f.content.replace(/\n/g, ""))));
+      P = (new Function(code + "; return POSTS;"))().slice(); fillPick(); } catch (e) { $("msg").textContent = "최신 글 목록을 불러오지 못했습니다: " + e.message; }
+  }
+  var today = function () { var d = new Date(); return d.getFullYear() + ". " + (d.getMonth() + 1) + ". " + d.getDate() + "."; };
+  var str = function (v) { return typeof v === "string" ? v : (v && (v.ko || v.en)) || ""; };
+
+  function fillPick() {
+    $("pick").innerHTML = '<option value="">새 글</option>' + P.map(function (p, i) { return '<option value="' + i + '">' + (p.date || "") + "  " + str(p.title) + (p.draft ? " (임시)" : "") + "</option>"; }).join("");
+  }
+  function load(i) {
+    var p = P[i];
+    $("title").value = p ? str(p.title) : ""; $("date").value = p ? (p.date || "") : today();
+    $("body").value = p ? str(p.body).replace(/^\n+/, "") : ""; $("draft").checked = !!(p && p.draft);
+    preview();
+  }
+  function preview() {
+    $("pt").textContent = $("title").value || "(제목)"; $("pd").textContent = $("date").value;
+    $("pb").innerHTML = window.MD($("body").value || "");
+    var imgs = $("pb").querySelectorAll("img");   // 아직 폴더에 저장 안 된 사진도 미리 보이게
+    imgs.forEach(function (im) { pending.forEach(function (f) { if (im.getAttribute("src") === "posts/" + f.name) im.src = f.url; }); });
+  }
+  function wrap(before, after, ph) {
+    var t = $("body"), s = t.selectionStart, e = t.selectionEnd, sel = t.value.slice(s, e) || ph;
+    t.value = t.value.slice(0, s) + before + sel + after + t.value.slice(e);
+    t.focus(); t.selectionStart = s + before.length; t.selectionEnd = s + before.length + sel.length; preview();
+  }
+  document.querySelectorAll(".tools button").forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.t;
+      if (k === "h") wrap("\n\n## ", "\n\n", "소제목");
+      if (k === "b") wrap("**", "**", "굵게 할 글");
+      if (k === "q") wrap("\n\n> ", "\n\n", "인용할 문장");
+      if (k === "l") wrap("\n\n- ", "\n- 둘째 항목\n\n", "첫째 항목");
+      if (k === "a") { var u = prompt("연결할 주소(https://...)"); if (u) wrap("[", "](" + u + ")", "보일 글자"); }
+      if (k === "i") $("img").click();
+    };
+  });
+  $("img").onchange = async function () {
+    var f0 = this.files[0]; if (!f0) return;
+    var f = await cleanImage(f0);
+    var name = f0.name.replace(/\.[^.]+$/, "").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "photo";
+    name = name + "-" + Date.now().toString(36) + ".jpg";
+    pending.push({ name: name, file: f, url: URL.createObjectURL(f) });
+    var cap = prompt("사진 아래 설명(없으면 비워 두세요)") || "";
+    wrap("\n\n![" + cap + "](posts/" + name + ")\n\n", "", "");
+    this.value = "";
+  };
+  ["title", "date", "body"].forEach(function (id) { $(id).oninput = preview; });
+  $("pick").onchange = function () { load(this.value === "" ? -1 : +this.value); };
+
+  function slug(t) {
+    var s = (t || "").toLowerCase().replace(/[^a-z0-9가-힣]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+    var base = s || ("post-" + Date.now()), x = base, n = 2;
+    while (P.some(function (p) { return p.id === x; })) x = base + "-" + (n++);
+    return x;
+  }
+  function esc(s) { return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"'); }
+  function escT(s) { return String(s).replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${"); }
+  function build() {
+    var head = [
+      "// ======================================================================",
+      "//  Others 메뉴에 올라가는 글입니다. write.html(글쓰기 화면)에서 쓰고 저장하면 이 파일이 새로 만들어집니다.",
+      "//  메모장으로 직접 고쳐도 됩니다. 본문은 ` (백틱) 두 개 사이에 씁니다.",
+      "//  표시: 빈 줄=문단, ## 소제목, [글자](주소)=링크, **굵게**, ![설명](posts/사진.jpg)=사진, > 인용, - 목록",
+      "//  draft: true 이면 홈페이지 목록에 안 나옵니다.",
+      "// ======================================================================",
+      "var POSTS = ["
+    ].join("\n");
+    var items = P.map(function (p) {
+      var t = typeof p.title === "string" ? '"' + esc(p.title) + '"' : JSON.stringify(p.title);
+      return "\n  {\n    id: \"" + esc(p.id) + "\",\n    date: \"" + esc(p.date || "") + "\",\n    title: " + t + ",\n    draft: " + (p.draft ? "true" : "false") + ",\n    body: `\n" + escT(str(p.body).replace(/^\n+/, "")) + "\n`\n  }";
+    }).join(",");
+    return head + items + "\n\n];\n";
+  }
+  async function writeFile(d, path, data) {
+    var parts = path.split("/"), cur = d;
+    for (var i = 0; i < parts.length - 1; i++) cur = await cur.getDirectoryHandle(parts[i], { create: true });
+    var fh = await cur.getFileHandle(parts[parts.length - 1], { create: true });
+    var w = await fh.createWritable(); await w.write(data); await w.close();
+  }
+  async function persist(note) {
+    var text = build();
+    if (!LOCAL) {
+      if (!TOKEN) { $("msg").textContent = "먼저 위의 GitHub 연결을 해 주세요."; return; }
+      try {
+        $("msg").textContent = "올리는 중입니다...";
+        for (var k = 0; k < pending.length; k++) await ghPut("posts/" + pending[k].name, await b64blob(pending[k].file), "Add photo " + pending[k].name);
+        pending = [];
+        await ghPut("posts.js", b64text(text), "Update posts");
+        $("msg").textContent = note + " 홈페이지에 올렸습니다. 1~2분 뒤 새로고침하면 보입니다.";
+      } catch (e) { $("msg").textContent = "올리지 못했습니다: " + e.message; }
+      return;
+    }
+    if (window.showDirectoryPicker) {
+      try {
+        if (!dir) {
+          dir = await window.showDirectoryPicker({ id: "homepage", mode: "readwrite" });
+          try { await dir.getFileHandle("index.html"); } catch (e) { dir = null; $("msg").textContent = "index.html 이 있는 홈페이지 폴더를 골라 주세요."; return; }
+        }
+        for (var i = 0; i < pending.length; i++) await writeFile(dir, "posts/" + pending[i].name, pending[i].file);
+        pending = [];
+        await writeFile(dir, "posts.js", text);
+        $("msg").textContent = note + " 홈페이지 폴더에 바로 반영되었습니다. 홈페이지 탭을 새로고침하면 보입니다.";
+        return;
+      } catch (e) { if (e.name === "AbortError") { $("msg").textContent = "폴더 선택을 취소했습니다."; return; } }
+    }
+    var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/javascript" })); a.download = "posts.js"; a.click();
+    $("msg").textContent = note + " posts.js 를 내려받았습니다. 홈페이지 폴더의 posts.js 를 이 파일로 바꿔 넣으세요." + (pending.length ? " 사진은 posts 폴더에 직접 넣어 주세요." : "");
+  }
+  $("save").onclick = function () {
+    if (!$("title").value.trim()) { $("msg").textContent = "제목을 써 주세요."; return; }
+    var i = $("pick").value, p;
+    if (i === "") { p = { id: slug($("title").value) }; P.unshift(p); }
+    else p = P[+i];
+    p.title = $("title").value.trim(); p.date = $("date").value.trim(); p.body = $("body").value; p.draft = $("draft").checked;
+    var idx = P.indexOf(p); fillPick(); $("pick").value = String(idx);
+    persist("저장했습니다.");
+  };
+  $("del").onclick = function () {
+    var i = $("pick").value; if (i === "") { load(-1); return; }
+    if (!confirm("이 글을 지울까요?")) return;
+    P.splice(+i, 1); fillPick(); load(-1); persist("지웠습니다.");
+  };
+  setMode();
+  fillPick();
+  await loadLatest();
+  var want = new URLSearchParams(location.search).get("edit");   // write.html?edit=글id 로 열면 그 글을 바로 불러옵니다
+  var wi = want ? P.findIndex(function (p) { return p.id === want; }) : -1;
+  if (wi >= 0) { $("pick").value = String(wi); load(wi); } else load(-1);
+})();
+</script>
+</body>
+</html>

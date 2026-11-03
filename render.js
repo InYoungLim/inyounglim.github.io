@@ -59,10 +59,10 @@
     var cur = postId && P.filter(function (p) { return p.id === postId; })[0];
     if (cur) {
       title = T(cur.title);
-      h += '<p class="back"><a href="' + url(pid, null, showDraft ? "&draft=1" : "") + '">' + T(S.backLabel) + "</a>" + (/^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href) ? ' <a class="write" href="write.html?edit=' + encodeURIComponent(cur.id) + '">이 글 고치기</a>' : "") + "</p>";
+      h += '<p class="back"><a href="' + url(pid, null, showDraft ? "&draft=1" : "") + '">' + T(S.backLabel) + "</a>" + ((/^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href) || !!localStorage.getItem("ghToken")) ? ' <a class="write" href="write.html?edit=' + encodeURIComponent(cur.id) + '">이 글 고치기</a>' : "") + "</p>";
       h += '<article class="post"><h1 class="pt">' + T(cur.title) + '</h1><p class="pdate">' + (cur.date || "") + "</p>" + md(T(cur.body)) + "</article>";
     } else {
-      var local = /^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href);
+      var local = /^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href) || !!localStorage.getItem("ghToken");
       h += "<h1 class=\"pt\">" + T(page.label) + (local ? ' <a class="write" href="write.html">+ 글쓰기</a>' : "") + "</h1>";
       h += '<div class="list">' + vis.map(function (p) {
         return '<div class="row"><span class="d">' + (p.date || "") + '</span><span><a href="' + url(pid, null, "&post=" + encodeURIComponent(p.id) + (showDraft ? "&draft=1" : "")) + '">' + T(p.title) + "</a>" + (p.draft ? " (draft)" : "") + "</span></div>";
