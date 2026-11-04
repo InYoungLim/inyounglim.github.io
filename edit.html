@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>홈페이지 고치기</title>
+<link rel="stylesheet" href="style.css?v=20261102">
+<style>
+  body{display:block}
+  .top{padding:14px 32px;border-bottom:1px solid #ddd}
+  .gh{padding:18px 32px;background:#f5f7fa}
+  .wrap{max-width:980px;padding:20px 32px 80px}
+  .hint{color:#666;font-size:13px}
+  .tabs button,.btn{font:inherit;font-size:13px;padding:4px 10px;margin:0 4px 4px 0;border:1px solid #bbb;background:#f7f7f7;border-radius:3px;cursor:pointer}
+  .tabs button.on{background:#222;color:#fff;border-color:#222}
+  h2.s{margin:34px 0 8px;padding-top:12px;border-top:1px solid #ddd}
+  input,textarea{font:inherit;padding:6px 8px;border:1px solid #bbb;border-radius:3px;background:#fff;width:100%;box-sizing:border-box}
+  textarea{line-height:1.6;resize:vertical}
+  .it{border:1px solid #e3e3e3;padding:8px;margin:0 0 8px;background:#fcfcfc}
+  .g{display:grid;grid-template-columns:90px 1fr;gap:6px;align-items:center;margin-bottom:5px}
+  .g label{font-size:12px;color:#555}
+  .bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #ccc;padding:10px 32px;z-index:9}
+  .bar .main{background:#222;color:#fff;border-color:#222;padding:7px 18px}
+  .msg{display:inline-block;margin-left:12px;color:#00356b}
+</style>
+</head>
+<body>
+<div class="top"><a href="index.html">홈페이지로</a> &nbsp; <b>홈페이지 고치기</b> <span class="hint" id="mode"></span> <a href="#" id="ghout" class="hint" style="display:none;margin-left:10px">연결 해제</a> &nbsp; <a href="write.html?edit=">Others 글쓰기</a></div>
+<div class="gh" id="gh" style="display:none">
+  <b>GitHub 연결</b> <span class="hint">(글쓰기 화면에서 이미 연결했다면 자동으로 연결됩니다)</span><br>
+  <input id="tok" type="password" placeholder="github_pat_..." style="width:420px;margin:8px 8px 0 0"> <button class="btn" id="tokgo">연결</button>
+  <div class="hint" id="tokmsg"></div>
+</div>
+<div class="wrap">
+  <p class="hint">고칠 언어: <span class="tabs" id="tabs"></span><br>고치는 칸은 선택한 언어의 글입니다. 비워 둔 언어는 영어 → 한국어 순서로 대신 나옵니다. 고친 뒤 아래의 "저장"을 눌러야 반영됩니다.</p>
+  <div id="form"></div>
+</div>
+<div class="bar"><button class="btn main" id="save">저장</button><span class="msg" id="msg"></span></div>
+<script>
+(async function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var REPO = "InYoungLim/inyounglim.github.io", BRANCH = "main";
+  var LOCAL = /^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href);
+  var TOKEN = localStorage.getItem("ghToken") || "";
+  var API = "https://api.github.com/repos/" + REPO + "/contents/";
+  var hdr = function () { return { "Authorization": "Bearer " + TOKEN, "Accept": "application/vnd.github+json" }; };
+  var S, dir = null, lang = "ko";
+  var LANGS = [["ko", "한국어"], ["en", "English"], ["ja", "日本語"], ["zhHans", "简体"], ["zhHant", "繁體"]];
+
+  async function ghGet(path) {
+    var r = await fetch(API + path + "?ref=" + BRANCH + "&t=" + Date.now(), { headers: hdr(), cache: "no-store" });
+    if (r.status === 404) return null; if (!r.ok) throw new Error("GitHub " + r.status); return r.json();
+  }
+  async function ghPut(path, text, msg) {
+    var cur = await ghGet(path);
+    var b64 = btoa(unescape(encodeURIComponent(text)));
+    var r = await fetch(API + path, { method: "PUT", headers: hdr(), body: JSON.stringify({ message: msg, content: b64, branch: BRANCH, sha: cur ? cur.sha : undefined }) });
+    if (!r.ok) throw new Error("GitHub " + r.status + " " + (await r.text()).slice(0, 120));
+  }
+  function setMode() {
+    if (LOCAL) { $("mode").textContent = "(내 컴퓨터의 홈페이지 폴더에 저장합니다)"; return; }
+    $("gh").style.display = TOKEN ? "none" : "block"; $("ghout").style.display = TOKEN ? "inline" : "none";
+    $("mode").textContent = TOKEN ? "(저장하면 인터넷 홈페이지에 바로 올라갑니다)" : "(GitHub 연결 전에는 저장할 수 없습니다)";
+  }
+  $("tokgo").onclick = async function () {
+    TOKEN = $("tok").value.trim(); if (!TOKEN) return;
+    try { var r = await fetch("https://api.github.com/repos/" + REPO, { headers: hdr() }); var j = await r.json();
+      if (!r.ok || !(j.permissions && j.permissions.push)) throw new Error(r.status);
+      localStorage.setItem("ghToken", TOKEN); $("tok").value = ""; setMode(); await load(); draw();
+    } catch (e) { TOKEN = ""; $("tokmsg").textContent = "연결하지 못했습니다. 토큰과 권한을 확인해 주세요."; }
+  };
+  $("ghout").onclick = function (e) { e.preventDefault(); localStorage.removeItem("ghToken"); TOKEN = ""; setMode(); };
+
+  async function load() {
+    var code;
+    if (!LOCAL && TOKEN) { var f = await ghGet("profile.js"); code = decodeURIComponent(escape(atob(f.content.replace(/\n/g, "")))); }
+    else code = await (await fetch("profile.js?t=" + Date.now(), { cache: "no-store" })).text();
+    S = (new Function(code + "; return SITE;"))();
+  }
+
+  // ---- 값 읽기·쓰기 (문자열이면 그대로, 언어 칸이 있으면 선택한 언어 칸) ----
+  var getL = function (v) { return v == null ? "" : typeof v === "string" ? v : (v[lang] || ""); };
+  function setL(o, k, val) { if (typeof o[k] === "string") o[k] = val; else { if (!o[k] || typeof o[k] !== "object") o[k] = {}; o[k][lang] = val; } }
+  function inp(label, o, k, area) {
+    var d = document.createElement("div"); d.className = "g";
+    var l = document.createElement("label"); l.textContent = label;
+    var e = document.createElement(area ? "textarea" : "input"); if (area) e.rows = area; e.value = getL(o[k]);
+    e.oninput = function () { setL(o, k, e.value); };
+    d.appendChild(l); d.appendChild(e); return d;
+  }
+  function plain(label, o, k) {   // 언어와 상관없는 칸
+    var d = document.createElement("div"); d.className = "g"; var l = document.createElement("label"); l.textContent = label;
+    var e = document.createElement("input"); e.value = o[k] == null ? "" : o[k]; e.oninput = function () { o[k] = e.value; };
+    d.appendChild(l); d.appendChild(e); return d;
+  }
+  function btn(txt, fn) { var b = document.createElement("button"); b.className = "btn"; b.textContent = txt; b.onclick = fn; return b; }
+  function listEditor(arr, kind, redraw) {
+    var box = document.createElement("div");
+    arr.forEach(function (it, i) {
+      var c = document.createElement("div"); c.className = "it";
+      if (it.heading !== undefined) { c.appendChild(inp("소제목", it, "heading")); }
+      else if (kind === "history") { c.appendChild(inp("내용", it, null === 0 ? "" : "__self")); }
+      else { c.appendChild(plain("날짜", it, "date")); c.appendChild(inp("제목", it, "title")); c.appendChild(plain("링크", it, "url")); c.appendChild(inp("설명", it, "note")); }
+      var t = document.createElement("div");
+      t.appendChild(btn("위로", function () { if (i > 0) { arr.splice(i - 1, 0, arr.splice(i, 1)[0]); redraw(); } }));
+      t.appendChild(btn("아래로", function () { if (i < arr.length - 1) { arr.splice(i + 1, 0, arr.splice(i, 1)[0]); redraw(); } }));
+      t.appendChild(btn("복제", function () { arr.splice(i + 1, 0, JSON.parse(JSON.stringify(it))); redraw(); }));
+      t.appendChild(btn("삭제", function () { if (confirm("이 줄을 지울까요?")) { arr.splice(i, 1); redraw(); } }));
+      c.appendChild(t); box.appendChild(c);
+    });
+    var add = document.createElement("div");
+    add.appendChild(btn("+ 항목 추가", function () { arr.unshift(kind === "history" ? { ko: "", en: "", ja: "", zhHans: "", zhHant: "" } : { date: "", title: { ko: "", en: "" }, url: "", note: { ko: "", en: "" } }); redraw(); }));
+    add.appendChild(btn("+ 소제목 추가", function () { arr.unshift({ heading: { ko: "", en: "" } }); redraw(); }));
+    box.insertBefore(add, box.firstChild); return box;
+  }
+  // 이력 항목은 { ko, en, ... } 자체가 글이라서 별도로 처리합니다.
+  var origInp = inp;
+  inp = function (label, o, k, area) {
+    if (k === "__self") { var d = document.createElement("div"); d.className = "g"; var l = document.createElement("label"); l.textContent = label;
+      var e = document.createElement("input"); e.value = o[lang] || ""; e.oninput = function () { o[lang] = e.value; }; d.appendChild(l); d.appendChild(e); return d; }
+    return origInp(label, o, k, area);
+  };
+
+  function section(title) { var h = document.createElement("h2"); h.className = "s"; h.textContent = title; return h; }
+  function draw() {
+    var f = $("form"); f.innerHTML = "";
+    f.appendChild(section("이름·직함·링크"));
+    f.appendChild(inp("이름", S, "name"));
+    f.appendChild(document.createElement("div"));
+    var rl = document.createElement("div"); rl.className = "g"; rl.innerHTML = "<label>직함<br><span class='hint'>한 줄에 하나</span></label>";
+    var ta = document.createElement("textarea"); ta.rows = 4; ta.value = ((S.roles[lang] || []).join("\n"));
+    ta.oninput = function () { S.roles[lang] = ta.value.split("\n").map(function (x) { return x.trim(); }).filter(Boolean); }; rl.appendChild(ta); f.appendChild(rl);
+    (S.links || []).forEach(function (lk) { var c = document.createElement("div"); c.className = "it"; c.appendChild(inp("링크 이름", lk, "label")); c.appendChild(plain("주소", lk, "url")); f.appendChild(c); });
+    f.appendChild(section("첫 화면 소개"));
+    f.appendChild(inp("소개", S, "intro", 5));
+    f.appendChild(section("경력·학력 (Home 화면)"));
+    f.appendChild(listEditor(S.history.items, "history", draw));
+    S.menu.forEach(function (m) {
+      if (m.type === "list") {
+        S.lists[m.id] = S.lists[m.id] || [];
+        f.appendChild(section(getL(m.label) || m.id + " (" + m.id + ")"));
+        f.appendChild(listEditor(S.lists[m.id], "list", draw));
+      }
+    });
+    f.appendChild(section("색"));
+    ["link", "menuBg", "menuText", "menuActive"].forEach(function (k) { f.appendChild(plain({ link: "링크 색", menuBg: "메뉴 바탕", menuText: "메뉴 글자", menuActive: "메뉴 선택" }[k], S.colors, k)); });
+    f.appendChild(section("메뉴 이름"));
+    S.menu.forEach(function (m) { f.appendChild(inp(m.id, m, "label")); });
+  }
+  $("tabs").innerHTML = ""; LANGS.forEach(function (L) {
+    var b = btn(L[1], function () { lang = L[0]; Array.prototype.forEach.call($("tabs").children, function (x) { x.classList.toggle("on", x === b); }); draw(); });
+    if (L[0] === lang) b.classList.add("on"); $("tabs").appendChild(b);
+  });
+
+  function build() {
+    return "// 홈페이지 내용과 설정입니다. edit.html(홈페이지 고치기 화면)에서 저장하면 이 파일이 새로 만들어집니다.\n// 메모장으로 직접 고쳐도 됩니다.\nvar SITE = " + JSON.stringify(S, null, 2) + ";\n";
+  }
+  $("save").onclick = async function () {
+    var text = build();
+    try { (new Function(text + "; return SITE;"))(); } catch (e) { $("msg").textContent = "내용에 오류가 있어 저장하지 않았습니다."; return; }
+    if (!LOCAL) {
+      if (!TOKEN) { $("msg").textContent = "먼저 GitHub 연결을 해 주세요."; return; }
+      try { $("msg").textContent = "올리는 중입니다..."; await ghPut("profile.js", text, "Update profile"); $("msg").textContent = "저장했습니다. 1~2분 뒤 홈페이지에 반영됩니다."; }
+      catch (e) { $("msg").textContent = "올리지 못했습니다: " + e.message; }
+      return;
+    }
+    try {
+      if (!dir) { dir = await window.showDirectoryPicker({ id: "homepage", mode: "readwrite" }); try { await dir.getFileHandle("index.html"); } catch (e) { dir = null; $("msg").textContent = "index.html 이 있는 폴더를 골라 주세요."; return; } }
+      var fh = await dir.getFileHandle("profile.js", { create: true }); var w = await fh.createWritable(); await w.write(text); await w.close();
+      $("msg").textContent = "홈페이지 폴더에 저장했습니다.";
+    } catch (e) { $("msg").textContent = e.name === "AbortError" ? "폴더 선택을 취소했습니다." : "저장하지 못했습니다: " + e.message; }
+  };
+  setMode();
+  if (LOCAL || TOKEN) try { await load(); draw(); } catch (e) { $("msg").textContent = "불러오지 못했습니다: " + e.message; }
+})();
+</script>
+</body>
+</html>
