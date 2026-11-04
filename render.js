@@ -25,7 +25,7 @@
     }
     return one(l);
   }).join("");
-  document.getElementById("side").innerHTML = '<nav class="menu">' + nav + '</nav><nav class="langs">' + langs + "</nav>";
+  document.getElementById("side").innerHTML = '<nav class="menu">' + nav + '</nav><nav class="langs">' + langs + "</nav>" + ((/^(file:|http:\/\/(127\.0\.0\.1|localhost))/.test(location.href) || !!localStorage.getItem("ghToken")) ? '<nav class="langs"><a href="edit.html">고치기</a></nav>' : "");
 
   var md = window.MD;
 
