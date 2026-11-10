@@ -6,6 +6,19 @@
 // ======================================================================
 var POSTS = [
   {
+    id: "미국-동부의-가을",
+    date: "2026. 11. 9.",
+    title: "미국 동부의 가을",
+    draft: false,
+    body: `
+여기에 오기 전, 뉴잉글랜드의 가을은 특히 아름답다고 들었다. 실제로 그렇다고 생각한다. 비록 해가 17시쯤이면 지는 것은 아쉽다(하지에는 4시 20분쯤 진다고 한다). 그래도 해가 지기 전까지는 즐길거리, 고즈넉한 아름다움이 있다. 많은 사람들은 그 속에서 조깅을 하거나, 강아지를 데리고 산책을 한다. 
+
+![](posts/20261108_155326-mwa6kay3.jpg)
+
+한국에 돌아가서도 문득 떠오르리라 생각한다 .
+`
+  },
+  {
     id: "bounty",
     date: "2026. 11. 1.",
     title: "키친타월",
@@ -20,6 +33,7 @@ var POSTS = [
 우연히 Sublet 시절의 사진을 보다가 두서 없이 글을 작성하였다.
 
 참고: [Kimberly-Clark, Disposable paper towels story](https://www.kimberly-clark.com/en-us/-/media/kimberly/pdf/innovation/productevol_papertowel_umbracofile.pdf), [Bounty, Brand Story](https://bountytowels.com/en-us/discover/brand-story)
+
 
 
 
@@ -42,6 +56,7 @@ var POSTS = [
 - 둘째 항목
 
 > 인용하고 싶은 문장은 이렇게 씁니다.
+
 
 
 
